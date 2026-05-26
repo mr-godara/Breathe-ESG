@@ -9,21 +9,27 @@ export default function UploadPage() {
     const [utilitySourceId, setUtilitySourceId] = useState("2");
     const [sapBusy, setSapBusy] = useState(false);
     const [utilityBusy, setUtilityBusy] = useState(false);
-    const [status, setStatus] = useState("");
+    const [status, setStatus] = useState(null);
 
     const handleSapUpload = async (file) => {
         if (!file) return;
         setSapBusy(true);
-        setStatus("");
+        setStatus(null);
         try {
-            await uploadSapCsv({
+            const response = await uploadSapCsv({
                 organizationId,
                 dataSourceId: sapSourceId,
                 file,
             });
-            setStatus("SAP upload completed.");
+            setStatus({
+                tone: "success",
+                message: `SAP upload completed. ${response.created_records} records created, ${response.error_rows?.length || 0} errors.`,
+            });
         } catch (error) {
-            setStatus("SAP upload failed. Check file format or source IDs.");
+            setStatus({
+                tone: "error",
+                message: "SAP upload failed. Check file format or source IDs.",
+            });
         } finally {
             setSapBusy(false);
         }
@@ -32,16 +38,22 @@ export default function UploadPage() {
     const handleUtilityUpload = async (file) => {
         if (!file) return;
         setUtilityBusy(true);
-        setStatus("");
+        setStatus(null);
         try {
-            await uploadUtilityCsv({
+            const response = await uploadUtilityCsv({
                 organizationId,
                 dataSourceId: utilitySourceId,
                 file,
             });
-            setStatus("Utility upload completed.");
+            setStatus({
+                tone: "success",
+                message: `Utility upload completed. ${response.created_records} records created, ${response.error_rows?.length || 0} errors.`,
+            });
         } catch (error) {
-            setStatus("Utility upload failed. Check file format or source IDs.");
+            setStatus({
+                tone: "error",
+                message: "Utility upload failed. Check file format or source IDs.",
+            });
         } finally {
             setUtilityBusy(false);
         }
@@ -87,8 +99,20 @@ export default function UploadPage() {
                     </div>
                 </div>
                 {status ? (
-                    <p className="mt-4 text-sm text-neutral-600">{status}</p>
-                ) : null}
+                    <div
+                        className={`mt-4 rounded-xl border px-4 py-3 text-sm ${
+                            status.tone === "success"
+                                ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                                : "border-rose-200 bg-rose-50 text-rose-900"
+                        }`}
+                    >
+                        {status.message}
+                    </div>
+                ) : (
+                    <p className="mt-4 text-sm text-neutral-500">
+                        Upload results will appear here with validation counts.
+                    </p>
+                )}
             </div>
 
             <div className="grid gap-6 lg:grid-cols-2">

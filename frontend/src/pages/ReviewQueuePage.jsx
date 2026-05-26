@@ -4,6 +4,7 @@ import DataTable from "../components/DataTable";
 import DetailModal from "../components/DetailModal";
 import FiltersBar from "../components/FiltersBar";
 import StatusBadge from "../components/StatusBadge";
+import ValidationPill from "../components/ValidationPill";
 import {
     getEmissionRecordDetail,
     getReviewQueue,
@@ -22,25 +23,37 @@ const COLUMNS = [
     },
     {
         key: "suspicious_flags",
-        label: "Flags",
-        render: (row) => (row.suspicious_flags?.length ? "Yes" : "No"),
+        label: "Validation",
+        render: (row) => <ValidationPill count={row.suspicious_flags?.length || 0} />,
     },
 ];
 
 export default function ReviewQueuePage() {
     const [statusFilter, setStatusFilter] = useState("PENDING");
+    const [scopeFilter, setScopeFilter] = useState("ALL");
+    const [searchTerm, setSearchTerm] = useState("");
     const [suspiciousOnly, setSuspiciousOnly] = useState(false);
     const [records, setRecords] = useState([]);
     const [detail, setDetail] = useState(null);
     const [organizationId] = useState("1");
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState(null);
 
     const loadQueue = async () => {
-        const data = await getReviewQueue({
-            status: statusFilter,
-            suspiciousOnly,
-            organizationId,
-        });
-        setRecords(data);
+        setIsLoading(true);
+        setError(null);
+        try {
+            const data = await getReviewQueue({
+                status: statusFilter,
+                suspiciousOnly,
+                organizationId,
+            });
+            setRecords(data);
+        } catch (err) {
+            setError("Unable to load the review queue.");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     useEffect(() => {
@@ -77,7 +90,26 @@ export default function ReviewQueuePage() {
         }
     };
 
-    const queueData = useMemo(() => records, [records]);
+    const queueData = useMemo(() => {
+        const query = searchTerm.trim().toLowerCase();
+        return records.filter((row) => {
+            if (scopeFilter !== "ALL" && row.scope !== scopeFilter) {
+                return false;
+            }
+            if (!query) {
+                return true;
+            }
+            const haystack = [
+                row.activity_category,
+                row.scope,
+                row.review_status,
+                ...(row.suspicious_flags || []),
+            ]
+                .join(" ")
+                .toLowerCase();
+            return haystack.includes(query);
+        });
+    }, [records, searchTerm, scopeFilter]);
 
     return (
         <div className="grid gap-6">
@@ -94,17 +126,40 @@ export default function ReviewQueuePage() {
                 onStatusChange={setStatusFilter}
                 suspiciousOnly={suspiciousOnly}
                 onSuspiciousChange={setSuspiciousOnly}
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+                scope={scopeFilter}
+                onScopeChange={setScopeFilter}
             />
 
-            <DataTable columns={COLUMNS} rows={queueData} onRowClick={handleOpen} />
+            {error ? (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
+                    {error}
+                </div>
+            ) : null}
+
+            <DataTable
+                columns={COLUMNS}
+                rows={queueData}
+                onRowClick={handleOpen}
+                isLoading={isLoading}
+                emptyTitle="No matching records"
+                emptyDescription="Adjust filters or upload new data sources."
+                getRowClassName={(row) =>
+                    row.suspicious_flags?.length
+                        ? "bg-amber-50/60"
+                        : ""
+                }
+            />
 
             <div className="flex flex-wrap gap-3">
                 <button
                     type="button"
                     className="rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm"
                     onClick={() => loadQueue()}
+                    disabled={isLoading}
                 >
-                    Refresh
+                    {isLoading ? "Refreshing..." : "Refresh"}
                 </button>
             </div>
 

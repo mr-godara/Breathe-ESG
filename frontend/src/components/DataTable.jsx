@@ -1,6 +1,16 @@
 import React from "react";
 
-export default function DataTable({ columns, rows, onRowClick }) {
+import EmptyState from "./EmptyState";
+
+export default function DataTable({
+    columns,
+    rows,
+    onRowClick,
+    isLoading = false,
+    emptyTitle = "No records",
+    emptyDescription,
+    getRowClassName,
+}) {
     return (
         <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white/80">
             <table className="w-full text-left text-sm">
@@ -14,19 +24,38 @@ export default function DataTable({ columns, rows, onRowClick }) {
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200">
-                    {rows.map((row) => (
-                        <tr
-                            key={row.id}
-                            className="cursor-pointer transition hover:bg-neutral-50"
-                            onClick={() => onRowClick?.(row)}
-                        >
-                            {columns.map((column) => (
-                                <td key={column.key} className="px-4 py-3">
-                                    {column.render ? column.render(row) : row[column.key]}
-                                </td>
-                            ))}
+                    {isLoading ? (
+                        <tr>
+                            <td className="px-4 py-6" colSpan={columns.length}>
+                                <div className="text-sm text-neutral-500">Loading records...</div>
+                            </td>
                         </tr>
-                    ))}
+                    ) : rows.length ? (
+                        rows.map((row) => (
+                            <tr
+                                key={row.id}
+                                className={`cursor-pointer transition hover:bg-neutral-50 ${
+                                    getRowClassName ? getRowClassName(row) : ""
+                                }`}
+                                onClick={() => onRowClick?.(row)}
+                            >
+                                {columns.map((column) => (
+                                    <td key={column.key} className="px-4 py-3">
+                                        {column.render ? column.render(row) : row[column.key]}
+                                    </td>
+                                ))}
+                            </tr>
+                        ))
+                    ) : (
+                        <tr>
+                            <td className="px-4 py-6" colSpan={columns.length}>
+                                <EmptyState
+                                    title={emptyTitle}
+                                    description={emptyDescription}
+                                />
+                            </td>
+                        </tr>
+                    )}
                 </tbody>
             </table>
         </div>

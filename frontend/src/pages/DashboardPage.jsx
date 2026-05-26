@@ -12,10 +12,12 @@ export default function DashboardPage() {
         rejected: 0,
     });
     const [records, setRecords] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         let active = true;
         async function loadStats() {
+            setIsLoading(true);
             try {
                 const records = await getReviewQueue({ status: "ALL" });
                 if (!active) return;
@@ -33,6 +35,10 @@ export default function DashboardPage() {
                 if (!active) return;
                 setRecords([]);
                 setStats({ total: 0, suspicious: 0, approved: 0, rejected: 0 });
+            } finally {
+                if (active) {
+                    setIsLoading(false);
+                }
             }
         }
         loadStats();
@@ -89,7 +95,13 @@ export default function DashboardPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-neutral-200">
-                                {suspiciousRecords.length ? (
+                                {isLoading ? (
+                                    <tr>
+                                        <td className="px-4 py-6 text-center text-sm text-neutral-500" colSpan={5}>
+                                            Loading suspicious records...
+                                        </td>
+                                    </tr>
+                                ) : suspiciousRecords.length ? (
                                     suspiciousRecords.map((row) => (
                                         <tr key={row.id}>
                                             <td className="px-4 py-3">{row.activity_date}</td>
