@@ -1,0 +1,4 @@
+Belegdatum;Buchungskreis;Werk;Material;Materialkurztext;Menge;Einheit;Lieferant;Waehrung;Wert
+01.05.2026;1000;PLANT-001;DSL-001;Diesel Fuel;500,0;L;Shell;EUR;1200,50
+02.05.2026;1000;PLANT-002;PET-001;Petrol Fuel;320,0;L;BP;EUR;890,00
+03.05.2026;2000;PLANT-003;GAS-001;Natural Gas;1200,0;m3;Total;EUR;3400,75

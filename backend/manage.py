@@ -1,10 +1,17 @@
 #!/usr/bin/env python
 import os
 import sys
+from pathlib import Path
 
 
 def main() -> None:
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "backend.config.settings.local")
+    repo_root = Path(__file__).resolve().parents[1]
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
+
+    os.environ.setdefault(
+        "DJANGO_SETTINGS_MODULE", "backend.config.settings.local"
+    )
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:
