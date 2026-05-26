@@ -8,7 +8,11 @@ python backend/manage.py migrate
 echo "Creating default organization..."
 python backend/manage.py shell -c "
 from backend.apps.ingestion.models import Organization
-Organization.objects.get_or_create(id=1, defaults={'name': 'Acme Corp'})
+from django.utils.text import slugify
+Organization.objects.get_or_create(
+	id=1,
+	defaults={'name': 'Acme Corp', 'slug': slugify('Acme Corp')},
+)
 "
 
 echo "Starting server..."
