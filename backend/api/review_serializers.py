@@ -6,6 +6,10 @@ from backend.apps.reviews.models import AuditLog, ReviewAction
 
 
 class ReviewQueueSerializer(serializers.ModelSerializer):
+    organization_id = serializers.IntegerField(source='organization.id', read_only=True)
+    data_source_id = serializers.IntegerField(source='data_source.id', read_only=True)
+    raw_record_id = serializers.IntegerField(source='raw_record.id', read_only=True)
+
     class Meta:
         model = EmissionRecord
         fields = [
