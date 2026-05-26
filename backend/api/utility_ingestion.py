@@ -12,7 +12,10 @@ from backend.apps.ingestion.models import IngestionBatch, RawRecord
 from backend.api.serializers import UtilityUploadSerializer
 from backend.services.normalization.utility import normalize_record
 from backend.services.parsers.utility_csv import parse_rows, read_utility_csv
-from backend.services.validation.utility_rules import suspicious_flags
+from backend.services.validation.utility_rules import (
+    has_overlapping_period,
+    suspicious_flags,
+)
 
 
 class UtilityCsvUploadView(APIView):
@@ -33,6 +36,7 @@ class UtilityCsvUploadView(APIView):
 
         created_records = 0
         error_rows: List[Dict[str, Any]] = []
+        meter_periods: Dict[str, List[tuple]] = {}
 
         with transaction.atomic():
             for index, parsed in enumerate(parse_rows(df), start=1):
@@ -59,12 +63,25 @@ class UtilityCsvUploadView(APIView):
                     service_region=parsed.service_region,
                 )
 
+                existing_periods = meter_periods.get(parsed.meter_id, [])
+                overlap = has_overlapping_period(
+                    parsed.billing_start,
+                    parsed.billing_end,
+                    existing_periods,
+                )
+
                 flags = suspicious_flags(
                     usage=parsed.usage or 0.0,
                     unit=parsed.unit,
                     billing_start=parsed.billing_start,
                     billing_end=parsed.billing_end,
+                    overlapping_period=overlap,
                 )
+
+                if parsed.billing_start and parsed.billing_end:
+                    meter_periods.setdefault(parsed.meter_id, []).append(
+                        (parsed.billing_start, parsed.billing_end)
+                    )
 
                 EmissionRecord.objects.create(
                     organization=organization,
