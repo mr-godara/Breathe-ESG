@@ -2,7 +2,7 @@ services:
   - type: web
     name: esg-platform-backend
     env: python
-    plan: starter
+    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn -c backend/gunicorn.conf.py backend.config.wsgi:application
     envVars:
@@ -22,4 +22,4 @@ services:
 
 databases:
   - name: esg-platform-db
-    plan: starter
+    plan: free
