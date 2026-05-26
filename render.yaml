@@ -6,6 +6,8 @@ services:
     buildCommand: pip install -r backend/requirements.txt
     startCommand: gunicorn -c backend/gunicorn.conf.py backend.config.wsgi:application
     envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
       - key: DJANGO_SETTINGS_MODULE
         value: backend.config.settings.production
       - key: DJANGO_DEBUG
