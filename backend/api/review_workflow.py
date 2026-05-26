@@ -9,6 +9,7 @@ from backend.apps.ingestion.models import Organization
 from backend.apps.reviews.models import AuditLog, ReviewAction
 from backend.api.review_serializers import (
     AuditLogListSerializer,
+    EmissionRecordDetailSerializer,
     ReviewActionListSerializer,
     ReviewActionSerializer,
     ReviewQueueSerializer,
@@ -107,6 +108,53 @@ class ReviewHistoryView(APIView):
 
         return Response(
             {
+                "review_actions": ReviewActionListSerializer(
+                    review_actions, many=True
+                ).data,
+                "audit_logs": AuditLogListSerializer(audit_logs, many=True).data,
+            }
+        )
+
+
+class EmissionRecordDetailView(APIView):
+    def get(self, request, record_id: int, *args, **kwargs):
+        organization_id = request.query_params.get("organization_id")
+        if not organization_id:
+            return Response(
+                {"error": "organization_id_required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            organization = Organization.objects.get(id=organization_id)
+        except Organization.DoesNotExist:
+            return Response(
+                {"error": "unknown_organization"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            record = EmissionRecord.objects.select_related(
+                "data_source",
+                "raw_record",
+                "raw_record__ingestion_batch",
+            ).get(id=record_id, organization=organization)
+        except EmissionRecord.DoesNotExist:
+            return Response(
+                {"error": "unknown_emission_record"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        review_actions = ReviewAction.objects.filter(
+            emission_record=record, organization=organization
+        ).order_by("created_at")
+        audit_logs = AuditLog.objects.filter(
+            emission_record=record, organization=organization
+        ).order_by("occurred_at")
+
+        return Response(
+            {
+                "record": EmissionRecordDetailSerializer(record).data,
                 "review_actions": ReviewActionListSerializer(
                     review_actions, many=True
                 ).data,

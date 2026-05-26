@@ -5,7 +5,7 @@ import DetailModal from "../components/DetailModal";
 import FiltersBar from "../components/FiltersBar";
 import StatusBadge from "../components/StatusBadge";
 import {
-    getReviewHistory,
+    getEmissionRecordDetail,
     getReviewQueue,
     postReviewAction,
 } from "../services/api";
@@ -31,8 +31,7 @@ export default function ReviewQueuePage() {
     const [statusFilter, setStatusFilter] = useState("PENDING");
     const [suspiciousOnly, setSuspiciousOnly] = useState(false);
     const [records, setRecords] = useState([]);
-    const [selectedRecord, setSelectedRecord] = useState(null);
-    const [history, setHistory] = useState(null);
+    const [detail, setDetail] = useState(null);
     const [organizationId] = useState("1");
 
     const loadQueue = async () => {
@@ -49,17 +48,15 @@ export default function ReviewQueuePage() {
     }, [statusFilter, suspiciousOnly]);
 
     const handleOpen = async (record) => {
-        setSelectedRecord(record);
-        const detail = await getReviewHistory({
+        const detailResponse = await getEmissionRecordDetail({
             organizationId,
             recordId: record.id,
         });
-        setHistory(detail);
+        setDetail(detailResponse);
     };
 
     const handleClose = () => {
-        setSelectedRecord(null);
-        setHistory(null);
+        setDetail(null);
     };
 
     const handleDecision = async (recordId, action) => {
@@ -71,6 +68,13 @@ export default function ReviewQueuePage() {
             reason: action === "REJECT" ? "Data mismatch" : "",
         });
         await loadQueue();
+        if (detail?.record?.id === recordId) {
+            const refreshed = await getEmissionRecordDetail({
+                organizationId,
+                recordId,
+            });
+            setDetail(refreshed);
+        }
     };
 
     const queueData = useMemo(() => records, [records]);
@@ -102,27 +106,14 @@ export default function ReviewQueuePage() {
                 >
                     Refresh
                 </button>
-                {selectedRecord ? (
-                    <div className="flex flex-wrap gap-3">
-                        <button
-                            type="button"
-                            className="rounded-full bg-emerald-600 px-4 py-2 text-sm text-white"
-                            onClick={() => handleDecision(selectedRecord.id, "APPROVE")}
-                        >
-                            Approve
-                        </button>
-                        <button
-                            type="button"
-                            className="rounded-full bg-rose-600 px-4 py-2 text-sm text-white"
-                            onClick={() => handleDecision(selectedRecord.id, "REJECT")}
-                        >
-                            Reject
-                        </button>
-                    </div>
-                ) : null}
             </div>
 
-            <DetailModal record={selectedRecord} history={history} onClose={handleClose} />
+            <DetailModal
+                detail={detail}
+                onClose={handleClose}
+                onApprove={(id) => handleDecision(id, "APPROVE")}
+                onReject={(id) => handleDecision(id, "REJECT")}
+            />
         </div>
     );
 }

@@ -59,3 +59,10 @@ export async function getReviewHistory({ organizationId, recordId }) {
     });
     return response.data;
 }
+
+export async function getEmissionRecordDetail({ organizationId, recordId }) {
+    const response = await apiClient.get(`/records/detail/${recordId}/`, {
+        params: { organization_id: organizationId },
+    });
+    return response.data;
+}
