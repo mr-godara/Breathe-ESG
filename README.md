@@ -1,86 +1,127 @@
-# ESG Emissions Ingestion Platform (Prototype)
+# Breathe ESG
 
-## Overview
-Prototype ESG ingestion and review platform focused on traceable raw ingestion, deterministic normalization, and analyst review workflows. The system preserves raw inputs, normalizes emissions into a canonical model, and maintains an audit trail for approvals and rejections.
+Emissions ingestion and analyst review platform. Ingests source data (SAP exports, utility bills, travel records), normalizes to a canonical emissions model, and runs analyst review workflows with full audit trail.
 
-## Architecture Summary
-- **Backend**: Django + DRF, PostgreSQL, service-layer ingestion/normalization/validation
-- **Frontend**: React + Vite + Tailwind
-- **Workflow**: Source data -> Raw records -> Normalized emissions -> Review + Audit
+## Why this exists
 
-## Tech Stack
-- Django
-- Django REST Framework
-- PostgreSQL
-- Pandas
-- React
-- Vite
-- Tailwind CSS
-- Axios
+Enterprise sustainability teams receive emissions data from dozens of source systems in inconsistent formats. This platform solves the "last mile" between raw exports and auditable, review-ready emission records.
+
+Core invariant: **raw inputs are preserved exactly as received.** Normalization produces a separate canonical record. Analysts review normalized data but can always trace back to the source evidence.
+
+## Architecture
+
+```
+CSV/API → Raw Record → Normalized Emission → Review Queue → Audit Log
+              ↑                  ↑                 ↑
+         preserved as-is    canonical units    append-only
+```
+
+- **Backend**: Django + DRF, SQLite (dev) / PostgreSQL (prod)
+- **Frontend**: React 19, Vite 8, Tailwind CSS 4
+- **Data flow**: Source → `RawRecord` → `EmissionRecord` → `ReviewAction` + `AuditLog`
+- **Multi-tenancy**: Explicit `organization` FK on every queryable entity
+
+## Ingestion sources
+
+| Source | Format | Normalization |
+|--------|--------|---------------|
+| SAP MM | CSV with German headers (`Belegdatum`, `Werk`, `Menge`, `Einheit`) | Mixed units → kg/L/kWh, locale decimals, plant code mapping |
+| Utility | CSV with billing periods and meter IDs | kWh/MWh → kWh, period validation |
+| Travel | Mocked Concur/Navan-style API | Airport codes, distance estimation, class mapping |
+
+Suspicious records (missing fields, implausible values, same-origin trips) are flagged but not rejected — analysts decide.
 
 ## Setup
+
 ### Backend
-1. Create a Python environment and install dependencies.
-2. Configure env vars from [backend/.env.example](backend/.env.example).
-3. Run migrations:
-   ```bash
-   python backend/manage.py migrate
-   ```
-4. Start server:
-   ```bash
-   python backend/manage.py runserver
-   ```
+
+```bash
+cd backend
+python -m venv venv && source venv/bin/activate  # or venv\Scripts\activate on Windows
+pip install -r requirements.txt
+cp .env.example .env                              # edit as needed
+python manage.py migrate
+python manage.py runserver
+```
 
 ### Frontend
-1. Install dependencies in `frontend`.
-2. Set `VITE_API_BASE_URL` in [frontend/.env.example](frontend/.env.example).
-3. Run the dev server:
-   ```bash
-   npm run dev
-   ```
 
-## Deployment URLs
-- Backend (Render): `https://your-backend.onrender.com`
-- Frontend (Vercel): `https://your-frontend.vercel.app`
+```bash
+cd frontend
+npm install
+cp .env.example .env                              # set VITE_API_BASE_URL
+npm run dev                                       # localhost:5173
+```
 
-## Ingestion Workflow
-- **SAP CSV**: Upload German-header CSV export, normalize units, map plant codes.
-- **Utility CSV**: Upload billing-period usage CSV, normalize to kWh.
-- **Travel API**: Sync mocked Concur/Navan-style trips.
+## API
 
-## Folder Structure
+All endpoints are tenant-scoped via `organization_id`.
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/ingestion/sap/upload/` | Upload SAP CSV |
+| `POST` | `/ingestion/utility/upload/` | Upload utility CSV |
+| `GET` | `/reviews/queue/` | List records for review (filterable) |
+| `POST` | `/reviews/action/` | Approve or reject a record |
+| `GET` | `/reviews/history/<id>/` | Review action history for a record |
+| `GET` | `/records/detail/<id>/` | Full record detail (raw + normalized + audit) |
+
+## Data model
+
+```
+Organization
+  └─ DataSource
+       └─ IngestionBatch
+            └─ RawRecord (raw_payload, ingest_status, suspicious_flags)
+                 └─ EmissionRecord (scope, kgCO2e, review_status)
+                      ├─ ReviewAction (approve/reject, analyst, reason)
+                      └─ AuditLog (event, actor, timestamp)
+```
+
+Key design decisions:
+- Raw/normalized separation for reprocessing and audit evidence
+- Approval locks the record and snapshots data
+- Suspicious flags on both raw and normalized layers
+- Append-only review and audit models
+
+## Project structure
+
 ```
 backend/
-  api/
-  apps/
-    ingestion/
-    emissions/
-    reviews/
-  config/
-  services/
-    parsers/
-    normalization/
-    validation/
-  utils/
+  api/              # DRF views (ingestion, review workflow)
+  apps/             # Django apps (ingestion, emissions, reviews)
+  services/         # Business logic (parsers, normalization, validation)
+  config/           # Django settings, WSGI
+  utils/            # Shared utilities
 frontend/
   src/
-    components/
-    pages/
-    services/
-    hooks/
+    components/     # DataTable, DetailModal, FiltersBar, Layout, etc.
+    pages/          # DashboardPage, UploadPage, ReviewQueuePage
+    services/       # Axios API client
+    hooks/          # useAsyncState
 ```
 
-## Screenshots (placeholders)
-- `docs/screenshots/dashboard.png`
-- `docs/screenshots/review-queue.png`
-- `docs/screenshots/record-detail.png`
+## Deployment
 
-## Documentation
-- [MODEL.md](MODEL.md)
-- [DECISIONS.md](DECISIONS.md)
-- [TRADEOFFS.md](TRADEOFFS.md)
-- [SOURCES.md](SOURCES.md)
-- [DEPLOYMENT.md](DEPLOYMENT.md)
+Backend on Render, frontend on Vercel. Config in [`render.yaml`](render.yaml) and [`vercel.json`](vercel.json).
 
-## Reviewer Login Credentials
-This prototype does not implement authentication. Analyst identity is simulated via name strings in review actions.
+See [DEPLOYMENT.md](DEPLOYMENT.md) for full checklist.
+
+## Scope boundaries
+
+This is a prototype. It intentionally excludes:
+- Authentication / RBAC (analyst identity is a name string)
+- Async job processing (ingestion is synchronous)
+- OCR/PDF extraction (CSV-only)
+- ML anomaly detection (deterministic rules only)
+- Emission factor versioning
+
+See [TRADEOFFS.md](TRADEOFFS.md) for rationale on each.
+
+## Docs
+
+- [MODEL.md](MODEL.md) — Data model and indexing strategy
+- [DECISIONS.md](DECISIONS.md) — Design decisions and assumptions
+- [TRADEOFFS.md](TRADEOFFS.md) — What was excluded and why
+- [SOURCES.md](SOURCES.md) — Source system research and data assumptions
+- [DEPLOYMENT.md](DEPLOYMENT.md) — Render + Vercel deployment guide
