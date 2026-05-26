@@ -1,4 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
+import {
+    RefreshCw,
+    AlertCircle,
+    ClipboardList,
+} from "lucide-react";
 
 import DataTable from "../components/DataTable";
 import DetailModal from "../components/DetailModal";
@@ -15,7 +20,13 @@ const COLUMNS = [
     { key: "activity_date", label: "Date" },
     { key: "activity_category", label: "Category" },
     { key: "scope", label: "Scope" },
-    { key: "emission_amount_kgco2e", label: "kgCO2e" },
+    {
+        key: "emission_amount_kgco2e",
+        label: "kgCO₂e",
+        render: (row) => (
+            <span className="tabular-nums font-medium">{row.emission_amount_kgco2e}</span>
+        ),
+    },
     {
         key: "review_status",
         label: "Status",
@@ -24,7 +35,9 @@ const COLUMNS = [
     {
         key: "suspicious_flags",
         label: "Validation",
-        render: (row) => <ValidationPill count={row.suspicious_flags?.length || 0} />,
+        render: (row) => (
+            <ValidationPill count={row.suspicious_flags?.length || 0} />
+        ),
     },
 ];
 
@@ -113,14 +126,53 @@ export default function ReviewQueuePage() {
 
     return (
         <div className="grid gap-6">
-            <div className="rounded-3xl border border-neutral-200 bg-white/80 p-6">
-                <h2 className="text-xl font-semibold">Review Queue</h2>
-                <p className="mt-2 text-sm text-neutral-600">
-                    Work the queue from suspicious records outward. Approved records lock
-                    automatically.
-                </p>
+            {/* ── Header card ───────────────────────────────── */}
+            <div
+                className="rounded-2xl border border-[var(--color-border)] bg-white p-5"
+                style={{ boxShadow: "var(--shadow-card)" }}
+            >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                        <div className="rounded-lg bg-gray-100 p-2">
+                            <ClipboardList className="h-4 w-4 text-gray-500" />
+                        </div>
+                        <div>
+                            <h2
+                                className="text-lg font-semibold text-gray-900"
+                                style={{ fontFamily: "'Fraunces', serif" }}
+                            >
+                                Review Queue
+                            </h2>
+                            <p className="mt-1 text-[13px] text-gray-500">
+                                Work the queue from suspicious records outward.
+                                Approved records lock automatically.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {!isLoading && records.length > 0 && (
+                            <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[12px] font-semibold text-gray-600 tabular-nums">
+                                {queueData.length} record{queueData.length !== 1 ? "s" : ""}
+                            </span>
+                        )}
+                        <button
+                            type="button"
+                            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[13px] font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+                            onClick={() => loadQueue()}
+                            disabled={isLoading}
+                        >
+                            <RefreshCw
+                                className={`h-3.5 w-3.5 ${
+                                    isLoading ? "animate-spin" : ""
+                                }`}
+                            />
+                            {isLoading ? "Loading…" : "Refresh"}
+                        </button>
+                    </div>
+                </div>
             </div>
 
+            {/* ── Filters ───────────────────────────────────── */}
             <FiltersBar
                 status={statusFilter}
                 onStatusChange={setStatusFilter}
@@ -132,12 +184,26 @@ export default function ReviewQueuePage() {
                 onScopeChange={setScopeFilter}
             />
 
-            {error ? (
-                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
-                    {error}
+            {/* ── Error ─────────────────────────────────────── */}
+            {error && (
+                <div className="flex items-start gap-3 rounded-2xl border border-[var(--color-rejected-border)] bg-[var(--color-rejected-bg)] p-4 animate-fade-in">
+                    <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5 text-[var(--color-rejected)]" />
+                    <div className="flex-1">
+                        <p className="text-sm font-medium text-[var(--color-rejected-text)]">
+                            {error}
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => loadQueue()}
+                        className="rounded-lg border border-rose-300 bg-white px-3 py-1 text-[12px] font-medium text-rose-700 transition-colors hover:bg-rose-50"
+                    >
+                        Retry
+                    </button>
                 </div>
-            ) : null}
+            )}
 
+            {/* ── Table ─────────────────────────────────────── */}
             <DataTable
                 columns={COLUMNS}
                 rows={queueData}
@@ -147,22 +213,12 @@ export default function ReviewQueuePage() {
                 emptyDescription="Adjust filters or upload new data sources."
                 getRowClassName={(row) =>
                     row.suspicious_flags?.length
-                        ? "bg-amber-50/60"
+                        ? "bg-orange-50/50 border-l-2 border-l-orange-400"
                         : ""
                 }
             />
 
-            <div className="flex flex-wrap gap-3">
-                <button
-                    type="button"
-                    className="rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm"
-                    onClick={() => loadQueue()}
-                    disabled={isLoading}
-                >
-                    {isLoading ? "Refreshing..." : "Refresh"}
-                </button>
-            </div>
-
+            {/* ── Detail modal ──────────────────────────────── */}
             <DetailModal
                 detail={detail}
                 onClose={handleClose}
