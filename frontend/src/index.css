@@ -1,0 +1,29 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Space+Grotesk:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --ink: 18 18 18;
+    --paper: 248 246 242;
+    --accent: 34 104 84;
+    --accent-strong: 22 70 56;
+    --warning: 205 122 16;
+    --danger: 162 35 35;
+}
+
+body {
+    font-family: "Space Grotesk", system-ui, sans-serif;
+    color: rgb(var(--ink));
+    background: radial-gradient(circle at top, #f7f2ea 0%, #f1efe9 45%, #e7e2da 100%);
+    min-height: 100vh;
+}
+
+h1, h2, h3 {
+    font-family: "Fraunces", serif;
+}
+
+* {
+    box-sizing: border-box;
+}
