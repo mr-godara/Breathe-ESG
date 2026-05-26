@@ -3,7 +3,7 @@ services:
     name: esg-platform-backend
     env: python
     plan: free
-    buildCommand: pip install -r backend/requirements.txt
+    buildCommand: bash backend/build.sh
     startCommand: gunicorn -c backend/gunicorn.conf.py backend.config.wsgi:application
     envVars:
       - key: PYTHON_VERSION
