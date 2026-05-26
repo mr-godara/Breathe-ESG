@@ -2,6 +2,9 @@
 # exit on error
 set -o errexit
 
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$REPO_ROOT"
+
 echo "Running database migrations..."
 python backend/manage.py migrate
 

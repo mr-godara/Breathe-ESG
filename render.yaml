@@ -3,8 +3,9 @@ services:
     name: esg-platform-backend
     env: python
     plan: free
-    buildCommand: pip install -r backend/requirements.txt
-    startCommand: bash backend/start.sh
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: bash start.sh
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.9"

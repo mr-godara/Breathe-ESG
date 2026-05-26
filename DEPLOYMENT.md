@@ -7,11 +7,12 @@
 
 ## Backend (Render)
 1. Create a new Web Service from this repository.
-2. Set build command: `pip install -r requirements.txt`.
-3. Set start command: `gunicorn backend.config.wsgi:application`.
-4. Add env vars from [backend/.env.example](backend/.env.example).
-5. Add a Render PostgreSQL database and map `DATABASE_URL`.
-6. Run migrations via Render shell: `python backend/manage.py migrate`.
+2. Set Root Directory to `backend`.
+3. Set build command: `pip install -r requirements.txt`.
+4. Set start command: `bash start.sh`.
+5. Add env vars from [backend/.env.example](backend/.env.example).
+6. Add a Render PostgreSQL database and map `DATABASE_URL`.
+7. Deploy. Migrations run automatically in `start.sh`.
 
 ## Frontend (Vercel)
 1. Create a new Vercel project from the repository.
